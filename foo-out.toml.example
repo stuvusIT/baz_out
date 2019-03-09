@@ -1,0 +1,5 @@
+[client]
+endpoint = "http://localhost:8020/castle/lock"
+
+[policy]
+lock_after_seconds = 300
