@@ -2,8 +2,8 @@
 extern crate serde_derive;
 
 use reqwest::Client;
-use std::time::{Duration, SystemTime};
 use std::error::Error;
+use std::time::{Duration, SystemTime};
 
 type Result<T = ()> = std::result::Result<T, Box<Error>>;
 
@@ -20,7 +20,7 @@ struct CastleGetData {
 }
 
 #[derive(Serialize)]
-struct CastlePostData {
+struct CastlePutData {
     state: LockState,
 }
 
@@ -50,25 +50,46 @@ fn read_config() -> Result<Config> {
 }
 
 fn run(config: &Config) -> Result {
-    let client = Client::new();
+    let client = &Client::new();
+    let endpoint = &config.client.endpoint;
+    let lock_after_duration = Duration::from_secs(config.policy.lock_after_seconds);
     loop {
-        let lock_url = &config.client.endpoint;
-        let resp_str = client
-            .get(lock_url)
-            .send()?
-            .text()?;
-        let resp : CastleGetData = serde_json::from_str(&resp_str)?;
-        if resp.state == LockState::Unlocked {
-            let last_change = std::time::UNIX_EPOCH + Duration::from_secs(resp.last_change);
-            let passed = SystemTime::now().duration_since(last_change)?;
-            if passed > Duration::from_secs(config.policy.lock_after_seconds) {
-                let req = CastlePostData {
-                    state: LockState::Locked
-                };
-                let req_str = serde_json::to_string(&req)?;
-                client.put(lock_url).body(req_str).send()?;
+        let resp = get_data(client, endpoint)?;
+        match resp.state {
+            LockState::Unlocked => {
+                let last_change = std::time::UNIX_EPOCH + Duration::from_secs(resp.last_change);
+                let passed = SystemTime::now().duration_since(last_change)?;
+                if lock_after_duration <= passed {
+                    lock(client, endpoint)?;
+                    std::thread::sleep(lock_after_duration);
+                } else {
+                    std::thread::sleep(lock_after_duration - passed);
+                }
+            }
+            LockState::Locked => {
+                std::thread::sleep(lock_after_duration);
             }
         }
-        std::thread::sleep(Duration::from_secs(1));
     }
+}
+
+fn lock(client: &Client, endpoint: &str) -> Result {
+    put_data(
+        client,
+        endpoint,
+        &CastlePutData {
+            state: LockState::Locked,
+        },
+    )
+}
+
+fn get_data(client: &Client, endpoint: &str) -> Result<CastleGetData> {
+    let resp_str = client.get(endpoint).send()?.text()?;
+    Ok(serde_json::from_str(&resp_str)?)
+}
+
+fn put_data(client: &Client, endpoint: &str, data: &CastlePutData) -> Result {
+    let req_str = serde_json::to_string(data)?;
+    client.put(endpoint).body(req_str).send()?;
+    Ok(())
 }
