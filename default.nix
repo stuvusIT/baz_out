@@ -1,38 +1,18 @@
-{ pkgsPath ? <nixpkgs>, crossSystem ? null }:
+{ pkgs ? import (builtins.fetchTarball https://github.com/nixos/nixpkgs/archive/master.tar.gz) {} }:
 
 let
-    mozOverlay = import (
-        builtins.fetchTarball https://github.com/mozilla/nixpkgs-mozilla/archive/master.tar.gz
-    );
-    pkgs = import pkgsPath {
-        overlays = [ mozOverlay ];
-        inherit crossSystem;
-    };
-    targets = [ pkgs.stdenv.targetPlatform.config ];
+  openssl = pkgs.openssl_1_1 or pkgs.openssl_1_1_0;
 in
 
-with pkgs;
+pkgs.rustPlatform.buildRustPackage rec {
+  name = "baz_out-${version}";
+  version = "test";
 
-stdenv.mkDerivation {
-    name = "castle";
+  src = ./.;
 
-    # build time dependencies targeting the build platform
-    depsBuildBuild = [
-        buildPackages.stdenv.cc
-    ];
-    HOST_CC = "cc";
+  cargoSha256 = "1z6s284mm80g0rnl0j0pbgssrmpy6i31jbfadvz2nhy94fjlqi1r";
 
-    # build time dependencies targeting the host platform
-    nativeBuildInputs = [
-        (buildPackages.buildPackages.latest.rustChannels.nightly.rust.override { inherit targets; })
-        buildPackages.buildPackages.rustfmt
-    ];
-    shellHook = ''
-        export RUSTFLAGS="-C linker=$CC"
-    '';
-    CARGO_BUILD_TARGET = targets;
-
-    # run time dependencies
-    OPENSSL_DIR = openssl_1_1_0.dev;
-    OPENSSL_LIB_DIR = "${openssl_1_1_0.out}/lib";
+  # run time dependencies
+  OPENSSL_DIR = openssl.dev;
+  OPENSSL_LIB_DIR = "${openssl.out}/lib";
 }

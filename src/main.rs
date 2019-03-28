@@ -45,7 +45,7 @@ fn main() -> Result {
 }
 
 fn read_config() -> Result<Config> {
-    let conf_str = std::fs::read_to_string("foo-out.toml")?;
+    let conf_str = std::fs::read_to_string("baz_out.toml")?;
     toml::from_str(&conf_str).map_err(From::from)
 }
 
