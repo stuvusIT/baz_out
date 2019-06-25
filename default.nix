@@ -1,18 +1,25 @@
-{ pkgs ? import (builtins.fetchTarball https://github.com/nixos/nixpkgs/archive/master.tar.gz) {} }:
-
 let
-  openssl = pkgs.openssl_1_1 or pkgs.openssl_1_1_0;
+  defaultPkgs = import <nixpkgs> {};
 in
 
-pkgs.rustPlatform.buildRustPackage rec {
+{
+  openssl ? defaultPkgs.openssl,
+  pkg-config ? defaultPkgs.pkg-config,
+  rustPlatform ? defaultPkgs.rustPlatform
+}:
+
+rustPlatform.buildRustPackage rec {
   name = "baz_out-${version}";
-  version = "test";
+  version = "unstable";
 
   src = ./.;
 
-  cargoSha256 = "1z6s284mm80g0rnl0j0pbgssrmpy6i31jbfadvz2nhy94fjlqi1r";
+  cargoSha256 = "14hdgqnii6di38a0hsmjqhqj5q9wps9fdh8phm0hqgsf5knglvaq";
 
-  # run time dependencies
-  OPENSSL_DIR = openssl.dev;
-  OPENSSL_LIB_DIR = "${openssl.out}/lib";
+  nativeBuildInputs = [
+    pkg-config
+  ];
+  buildInputs = [
+    openssl
+  ];
 }

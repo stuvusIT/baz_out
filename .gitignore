@@ -1,4 +1,6 @@
 /target
 **/*.rs.bk
 
+result
+
 baz_out.toml
