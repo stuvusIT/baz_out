@@ -1,7 +1,7 @@
 # baz_out
 
 This is a little program that works together with
-[castle](github.com/haslersn/castle).
+[castle](https://github.com/haslersn/castle).
 baz_out locks the lock if there was no change for a certain period of time.
 
 baz_out realizes this by accessing a castle `/lock` endpoint, where
